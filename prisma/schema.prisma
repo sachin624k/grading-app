@@ -13,17 +13,42 @@ datasource db {
 }
 
 model User {
-  id        Int    @id @default(autoincrement())
-  email     String @unique
-  firstName String
-  lastName  String
-  social    Json?
+  id          Int                @id @default(autoincrement())
+  email       String             @unique
+  firstName   String
+  lastName    String
+  social      Json?
+  // Relation fields
+  courses     CourseEnrollment[] // courses is a relation field, not a physical database column.
+  testResults TestResult[]       @relation(name: "results")
+  testsGraded TestResult[]       @relation(name: "graded")
 }
 
 model Course {
-  id            Int     @id @default(autoincrement())
+  id            Int                @id @default(autoincrement())
   name          String
   courseDetails String?
+  // Relation fields
+  members       CourseEnrollment[] // members is a relation field, not a physical database column
+  tests         Test[]
+}
+
+model CourseEnrollment {
+  createdAt DateTime @default(now())
+  role      UserRole
+  // Relation fields
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  courseId  Int
+  course    Course   @relation(fields: [courseId], references: [id])
+
+  @@id([userId, courseId])
+  @@index([userId, role])
+}
+
+enum UserRole {
+  STUDENT
+  TEACHER
 }
 
 model Test {
@@ -31,13 +56,21 @@ model Test {
   updatedAt   DateTime     @updatedAt
   name        String
   date        DateTime
-  testResults TestResult[] // relation field
+  // Relation fields
+  courseId    Int
+  course      Course       @relation(fields: [courseId], references: [id])
+  testResults TestResult[]
 }
 
 model TestResult {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
-  result    Int
+  result    Int // Percentage precise to one decimal point represented as `result * 10^-1`
+  // Relation fields
+  studentId Int
+  student   User     @relation(name: "results", fields: [studentId], references: [id])
+  graderId  Int
+  gradedBy  User     @relation(name: "graded", fields: [graderId], references: [id])
   testId    Int // relation scalar field
-  test      Test     @relation(fields: [testId], references: [id]) // relation field
+  test      Test     @relation(fields: [testId], references: [id])
 }
