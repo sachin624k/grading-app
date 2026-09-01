@@ -131,6 +131,55 @@ async function main() {
 
     counter++;
   }
+
+  // for (const test of course.tests) {
+  //   const results = await prisma.testResult.aggregate({
+  //     where: {
+  //       testId: test.id,
+  //     },
+  //     _avg: { result: true },
+  //     _max: { result: true },
+  //     _min: { result: true },
+  //     _count: true,
+  //   });
+  //   console.log(`test: ${test.name} (id: ${test.id})`, results);
+  // }
+
+  // Get aggregates for David
+  // const davidAggregates = await prisma.testResult.aggregate({
+  //   where: {
+  //     student: { email: david.email },
+  //   },
+  //   _avg: { result: true },
+  //   _max: { result: true },
+  //   _min: { result: true },
+  //   _count: true,
+  // });
+  // console.log(`David's results (email: ${david.email})`, davidAggregates);
+
+  // Get aggregates for Shakuntala
+  // const shakuntalaAggregates = await prisma.testResult.aggregate({
+  //   where: {
+  //     student: { email: shakuntala.email },
+  //   },
+  //   _avg: { result: true },
+  //   _max: { result: true },
+  //   _min: { result: true },
+  //   _count: true,
+  // });
+  // console.log(
+  //   `Shakuntala's results (email: ${shakuntala.email})`,
+  //   shakuntalaAggregates,
+  // );
+
+  const resultsByTest = await prisma.testResult.groupBy({
+    by: ["testId"],
+    _avg: { result: true },
+    _max: { result: true },
+    _min: { result: true },
+    _count: true,
+  });
+  console.log(resultsByTest);
 }
 
 main()
