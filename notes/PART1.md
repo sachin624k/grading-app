@@ -1,28 +1,56 @@
-# Building a Modern Backend with TypeScript, PostgreSQL & Prisma
+## Part 1 — Project Setup, Data Modeling & Prisma Basics
 
 A step-by-step guide to setting up a backend project using **TypeScript**, **PostgreSQL**, and **Prisma ORM**, using a grading/course app as the example project.
 
----
-
-## Table of Contents
-
-1. [Development Setup](#development-setup)
-2. [TypeScript Configuration](#typescript-configuration)
-3. [Create a PostgreSQL Database](#create-a-postgresql-database)
-4. [Initialize Prisma ORM](#initialize-prisma-orm)
-5. [Data Modeling — Grading System](#data-modeling--grading-system)
-6. [Understanding the Prisma Schema](#understanding-the-prisma-schema)
-7. [Relations](#relations)
-8. [Migrating the Database](#migrating-the-database)
-9. [Generating Prisma Client](#generating-prisma-client)
-10. [Seeding the Database](#seeding-the-database)
-11. [Nested Writes (create vs connect)](#nested-writes-create-vs-connect)
-12. [Prisma Studio](#prisma-studio)
-13. [Prisma Aggregation](#prisma-aggregation)
+This part covers everything from creating the project folder to running your first aggregation query — project setup, TypeScript configuration, database creation, data modeling, the Prisma schema, relations, migrations, the Prisma Client, seeding, nested writes, Prisma Studio, and aggregation.
 
 ---
 
-## Development Setup
+### Table of Contents
+
+1. [Prerequisites](#prerequisites)
+2. [Why Prisma?](#why-prisma)
+3. [Development Setup](#development-setup)
+4. [TypeScript Configuration](#typescript-configuration)
+5. [Create a PostgreSQL Database](#create-a-postgresql-database)
+6. [Initialize Prisma ORM](#initialize-prisma-orm)
+7. [Data Modeling — Grading System](#data-modeling--grading-system)
+8. [Understanding the Prisma Schema](#understanding-the-prisma-schema)
+9. [Relations](#relations)
+10. [Migrating the Database](#migrating-the-database)
+11. [Generating Prisma Client](#generating-prisma-client)
+12. [Seeding the Database](#seeding-the-database)
+13. [Nested Writes (create vs connect)](#nested-writes-create-vs-connect)
+14. [Prisma Studio](#prisma-studio)
+15. [Prisma Aggregation](#prisma-aggregation)
+16. [Quick Reference / Cheat Sheet](#quick-reference--cheat-sheet)
+
+---
+
+### Prerequisites
+
+Before starting, it helps to have:
+
+- **Node.js** installed (Prisma 7 and `tsx` both run on Node)
+- Basic familiarity with **JavaScript/TypeScript** syntax
+- A general understanding of **relational databases** (tables, rows, primary keys, foreign keys) — the notes explain the Prisma-specific parts, but knowing what a foreign key is will make the relations section easier to follow
+- A terminal, since every step here is run via `npx` commands
+
+---
+
+### Why Prisma?
+
+Prisma is an **ORM (Object-Relational Mapper)** — it lets you interact with a SQL database using type-safe TypeScript code instead of writing raw SQL by hand. Three pieces work together:
+
+- **Prisma Schema** (`schema.prisma`) — a single file where you declare your data model (tables, fields, relations) in a simple, readable syntax.
+- **Prisma Migrate** — reads your schema and generates/runs the actual SQL needed to keep your PostgreSQL database in sync with it.
+- **Prisma Client** — an auto-generated, fully-typed TypeScript client built from your schema, so your editor autocompletes queries and catches type errors before you even run the code.
+
+In short: you describe your data _once_ in `schema.prisma`, and Prisma keeps both your **database** and your **TypeScript code** in sync with that single source of truth.
+
+---
+
+### Development Setup
 
 ```bash
 mkdir grading-app
@@ -30,33 +58,35 @@ cd grading-app
 npm init -y
 ```
 
-### Install TypeScript tools
+#### Install TypeScript tools
 
 ```bash
 npm install typescript tsx @types/node --save-dev
 ```
 
-### Install Prisma + PostgreSQL packages
+#### Install Prisma + PostgreSQL packages
 
 ```bash
 npm install prisma@7.9.1 @types/pg --save-dev
 npm install @prisma/client@7.9.1 @prisma/adapter-pg pg dotenv
 ```
 
-| Package              | Purpose                                      |
-| -------------------- | -------------------------------------------- |
-| `prisma`             | Prisma CLI (`init`, `migrate`, `generate`)   |
-| `@prisma/client`     | Query the database using Prisma              |
-| `@prisma/adapter-pg` | Connects Prisma to PostgreSQL through `pg`   |
-| `pg`                 | PostgreSQL Node.js driver                    |
-| `@types/pg`          | TypeScript types for `pg`                    |
-| `dotenv`             | Loads `.env` variables                       |
-| `tsx`                | Runs `.ts` files directly during development |
-| `--save-dev`         | Installs the package as a dev dependency     |
+| Package              | Purpose                                                                                                   |
+| -------------------- | --------------------------------------------------------------------------------------------------------- |
+| `prisma`             | Prisma CLI (`init`, `migrate`, `generate`)                                                                |
+| `@prisma/client`     | Query the database using Prisma                                                                           |
+| `@prisma/adapter-pg` | Connects Prisma to PostgreSQL through `pg`                                                                |
+| `pg`                 | PostgreSQL Node.js driver                                                                                 |
+| `@types/pg`          | TypeScript types for `pg`                                                                                 |
+| `dotenv`             | Loads `.env` variables                                                                                    |
+| `tsx`                | Runs `.ts` files directly during development                                                              |
+| `--save-dev`         | Installs the package as a dev dependency (a tool you need while developing, not at runtime in production) |
+
+> **Note on versions:** Pinning `prisma` and `@prisma/client` to the _same_ version (here `7.9.1`) matters — the CLI and the client library need to match, otherwise you can get schema/generation mismatches.
 
 ---
 
-## TypeScript Configuration
+### TypeScript Configuration
 
 Create the config file:
 
@@ -79,16 +109,16 @@ npx tsc --init
 }
 ```
 
-| Option                        | Meaning                                                        |
-| ----------------------------- | -------------------------------------------------------------- |
-| `module: "ESNext"`            | Use modern `import`/`export` syntax                            |
-| `moduleResolution: "bundler"` | How TypeScript resolves imported modules                       |
-| `target: "ES2023"`            | Compile down to modern JavaScript                              |
-| `strict: true`                | Enables stronger type checking                                 |
-| `esModuleInterop: true`       | CommonJS/ESM import compatibility                              |
-| `types: ["node"]`             | Adds Node.js types — needed because `process` is a Node global |
+| Option                        | Meaning                                                                                                                    |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `module: "ESNext"`            | Use modern `import`/`export` syntax                                                                                        |
+| `moduleResolution: "bundler"` | How TypeScript resolves imported modules                                                                                   |
+| `target: "ES2023"`            | Compile down to modern JavaScript                                                                                          |
+| `strict: true`                | Enables stronger type checking (catches more bugs at compile time)                                                         |
+| `esModuleInterop: true`       | CommonJS/ESM import compatibility, so `import x from "y"` works smoothly even with older CommonJS packages                 |
+| `types: ["node"]`             | Adds Node.js types — needed because `process` is a Node global, and without this TypeScript doesn't know what `process` is |
 
-### Enable ESM in `package.json`
+#### Enable ESM in `package.json`
 
 ```json
 {
@@ -96,21 +126,23 @@ npx tsc --init
 }
 ```
 
+This tells Node to treat `.js`/`.ts` files in the project as **ES Modules** (using `import`/`export`) rather than the older CommonJS (`require`) format — matching the `module: "ESNext"` setting above.
+
 ---
 
-## Create a PostgreSQL Database
+### Create a PostgreSQL Database
 
-This guide uses **Prisma Postgres**, a managed/cloud PostgreSQL database.
+This guide uses **Prisma Postgres**, a managed/cloud PostgreSQL database — meaning you don't need to install or configure PostgreSQL yourself locally.
 
 ```bash
 npx create-db
 ```
 
-This creates a cloud database and prints a `postgres://...` connection string.
+This creates a cloud database and prints a `postgres://...` connection string, which you'll use to let your app talk to that database.
 
 ---
 
-## Initialize Prisma ORM
+### Initialize Prisma ORM
 
 ```bash
 npx prisma init --output ../generated/prisma
@@ -136,7 +168,7 @@ prisma.config.ts
 - **`.env`** → stores environment variables (e.g. `DATABASE_URL`)
 - **`prisma.config.ts`** → Prisma project configuration (schema location, migrations, database URL, etc.)
 
-### Set the connection string
+#### Set the connection string
 
 Paste the URL printed by `npx create-db` into `.env`:
 
@@ -144,13 +176,15 @@ Paste the URL printed by `npx create-db` into `.env`:
 DATABASE_URL="postgres://<your-connection-string-from-create-db>"
 ```
 
+Prisma reads this variable to know which database to connect to — keeping credentials out of your source code and in an environment file instead (which should never be committed to version control).
+
 ---
 
-## Data Modeling — Grading System
+### Data Modeling — Grading System
 
-**Approach:** First understand the real-world entities and their relationships, _then_ design the tables.
+**Approach:** First understand the real-world entities and their relationships, _then_ design the tables. Jumping straight to writing a schema without this step is a common source of awkward, hard-to-change database designs later on.
 
-### Entities → Tables
+#### Entities → Tables
 
 | Entity             | Represents                                          |
 | ------------------ | --------------------------------------------------- |
@@ -160,7 +194,7 @@ DATABASE_URL="postgres://<your-connection-string-from-create-db>"
 | `TestResult`       | A student's test result + the teacher who graded it |
 | `CourseEnrollment` | Connects users and courses                          |
 
-### Relationships
+#### Relationships
 
 **One-to-Many (1:N)**
 
@@ -189,16 +223,18 @@ role
 
 > **Key idea:** Understand the problem → identify entities → create tables → determine relationships → add PKs/FKs.
 
+This four-step thought process (entities → tables → relationships → keys) is worth applying to _any_ new feature you add later, not just this example app.
+
 ---
 
-## Understanding the Prisma Schema
+### Understanding the Prisma Schema
 
-The Prisma schema is a **declarative definition** of your database tables. It's the single source of truth for:
+The Prisma schema is a **declarative definition** of your database tables — you describe _what_ the data looks like, not _how_ to create it step by step. It's the single source of truth for:
 
 - The generated Prisma Client
 - Prisma Migrate, which creates the actual database schema
 
-### Defining a Model
+#### Defining a Model
 
 A `model` = a database table. Each Prisma model maps to one PostgreSQL table.
 
@@ -212,7 +248,12 @@ model User {
 }
 ```
 
-### `Json` fields
+- `@id` marks the field as the table's primary key.
+- `@default(autoincrement())` tells PostgreSQL to auto-generate a new incrementing number for each row.
+- `@unique` enforces that no two rows can share the same value in that column (here, no two users can share an email).
+- A trailing `?` (like `courseDetails String?`) marks a field as **optional** — it can be `null`.
+
+#### `Json` fields
 
 `Json` stores flexible, structured data where fields can vary between records.
 
@@ -226,11 +267,11 @@ Another user could have just:
 { "github": "rahul-dev" }
 ```
 
-- No database schema change is needed when adding/removing JSON fields.
+- No database schema change is required when adding/removing JSON fields.
 - Useful for: social links, settings, preferences, metadata, etc.
-- **Don't** use `Json` for normal relationships — use proper tables and relations instead.
+- **Don't** use `Json` for normal relationships — use proper tables and relations instead. Relations give you referential integrity (Prisma/PostgreSQL can guarantee the linked row actually exists), while a JSON blob cannot.
 
-### Full Model Set
+#### Full Model Set
 
 ```prisma
 model User {
@@ -262,11 +303,14 @@ model TestResult {
 }
 ```
 
+- `@updatedAt` automatically sets the field to the current timestamp whenever the row is updated.
+- `@default(now())` sets the field to the current timestamp only when the row is first created.
+
 ---
 
-## Relations
+### Relations
 
-### One-to-Many
+#### One-to-Many
 
 A 1:N relation is represented using three parts:
 
@@ -304,15 +348,17 @@ Test 1 ───────── * TestResult
 
 > **Remember:** `fields` → FK in _this_ model. `references` → PK/unique field in the _other_ model.
 
-### Many-to-Many
+The `testResults TestResult[]` field on `Test` is a **virtual field** — it doesn't create a new column in the `Test` table. It exists purely so Prisma Client can let you query/include the related tests from the `Test` side.
+
+#### Many-to-Many
 
 ```
 User * ───────── * Course
 ```
 
-#### 1. Implicit Many-to-Many
+##### 1. Implicit Many-to-Many
 
-Prisma automatically manages the relation table for you.
+Prisma automatically manages the relation table for you — you never see or touch it directly.
 
 ```prisma
 model User {
@@ -328,7 +374,7 @@ model Course {
 
 Use this when you only need the relationship itself, with no extra data attached to it.
 
-#### 2. Explicit Many-to-Many
+##### 2. Explicit Many-to-Many
 
 Define the relation table yourself — needed when the relationship carries extra information (e.g. a `role`).
 
@@ -338,7 +384,7 @@ User ─── Course
       role
 ```
 
-A given user might be a `STUDENT` in one course and a `TEACHER` in another, so `role` belongs to the _relationship_, not to `User` or `Course` alone.
+A given user might be a `STUDENT` in one course and a `TEACHER` in another, so `role` belongs to the _relationship_, not to `User` or `Course` alone. This is exactly why an implicit M:N (which has no room for extra fields) wouldn't work here — you need a real model with its own columns.
 
 ```prisma
 model CourseEnrollment {
@@ -367,7 +413,7 @@ This turns the single M:N relationship into two 1:N relationships:
 User 1 ─── * CourseEnrollment * ─── 1 Course
 ```
 
-#### Composite / Multi-Field Primary Key
+##### Composite / Multi-Field Primary Key
 
 ```prisma
 @@id([userId, courseId])
@@ -388,7 +434,7 @@ This guarantees a user can only be enrolled in the same course once.
 - Why not `courseId` alone as PK? A course can have _multiple_ users.
 - So: `userId + courseId` = unique combination.
 
-#### Enums
+##### Enums
 
 ```prisma
 enum UserRole {
@@ -397,9 +443,9 @@ enum UserRole {
 }
 ```
 
-An enum restricts a field to a predefined set of values — `role` can only ever be `STUDENT` or `TEACHER`.
+An enum restricts a field to a predefined set of values — `role` can only ever be `STUDENT` or `TEACHER`. This is enforced at the database level, so invalid values (e.g. `"ADMIN"`, if it wasn't defined) can't be inserted.
 
-#### Indexes
+##### Indexes
 
 ```prisma
 @@index([userId, role])
@@ -409,13 +455,13 @@ Creates a database index on `userId` + `role`, telling PostgreSQL:
 
 > "I'll often search using `userId` and `role`, so create an index to make those lookups faster."
 
-This helps queries like _"find all teachers/students for a particular user"_ run efficiently.
+This helps queries like _"find all teachers/students for a particular user"_ run efficiently, especially as the table grows to thousands or millions of rows.
 
-> You don't need to deeply understand index optimization yet — just remember: **index → faster lookups/queries.**
+> You don't need to deeply understand index optimization yet — just remember: **index → faster lookups/queries** (at the cost of a small amount of extra storage and slightly slower writes).
 
 ---
 
-## Migrating the Database
+### Migrating the Database
 
 Once your models are defined in `schema.prisma`, use Prisma Migrate to create/update the actual PostgreSQL tables.
 
@@ -447,7 +493,9 @@ Run SQL
 PostgreSQL database updated
 ```
 
-### `migrate` vs `generate`
+Each time you change your schema and run `migrate dev` again with a new `--name`, Prisma creates a _new_ timestamped migration file — giving you a full, ordered history of every schema change, which is also what lets you deploy the same changes safely to another environment (like production).
+
+#### `migrate` vs `generate`
 
 | Command                              | Purpose                       |
 | ------------------------------------ | ----------------------------- |
@@ -457,9 +505,11 @@ PostgreSQL database updated
 - **`migrate`** → _"Update my PostgreSQL database according to my schema."_ Creates and runs `prisma/migrations/.../migration.sql`.
 - **`generate`** → _"Update the Prisma Client so my TypeScript code knows about my latest models."_
 
+`prisma migrate dev` actually runs `generate` for you automatically after migrating — but it's useful to know they're conceptually two separate jobs, since you'll run `generate` on its own in some workflows (e.g. after pulling schema changes from a teammate without wanting to create a new migration).
+
 ---
 
-## Generating Prisma Client
+### Generating Prisma Client
 
 Prisma Client is a **type-safe database client** generated from `schema.prisma`, giving TypeScript autocomplete and type checking against your database.
 
@@ -479,7 +529,7 @@ Use in TypeScript
 
 With Prisma 7, the generated client is placed in your configured output folder — e.g. `generated/prisma/`.
 
-> Whenever you change your Prisma schema, re-run `npx prisma generate`.
+> Whenever you change your Prisma schema, re-run `npx prisma generate` — otherwise your TypeScript code and editor autocomplete will be out of sync with your actual models.
 
 **Remember:**
 
@@ -488,11 +538,11 @@ With Prisma 7, the generated client is placed in your configured output folder �
 
 ---
 
-## Seeding the Database
+### Seeding the Database
 
-Seeding means inserting initial/sample data into the database using Prisma Client.
+Seeding means inserting initial/sample data into the database using Prisma Client — useful for local development and testing, so you're not starting from a completely empty database every time.
 
-### 1. Register the Seed Script
+#### 1. Register the Seed Script
 
 In `prisma.config.ts`:
 
@@ -503,9 +553,9 @@ migrations: {
 }
 ```
 
-This tells the Prisma CLI how to run the seed file.
+This tells the Prisma CLI how to run the seed file when you call `npx prisma db seed`.
 
-### 2. Create a Prisma Client in `seed.ts`
+#### 2. Create a Prisma Client in `seed.ts`
 
 ```ts
 import "dotenv/config";
@@ -527,15 +577,15 @@ const prisma = new PrismaClient({ adapter });
 | `adapter`       | Connects Prisma Client to PostgreSQL through `pg` |
 | `DATABASE_URL`  | PostgreSQL connection string                      |
 
-#### What does `!` mean?
+##### What does `!` mean?
 
 ```ts
 process.env.DATABASE_URL!;
 ```
 
-The `!` is TypeScript's **non-null assertion operator**. It tells TypeScript: _"I know `DATABASE_URL` exists — don't complain that it might be `undefined`."_ It does **not** create or validate the variable itself.
+The `!` is TypeScript's **non-null assertion operator**. It tells TypeScript: _"I know `DATABASE_URL` exists — don't complain that it might be `undefined`."_ It does **not** create or validate the variable itself — if the variable is actually missing at runtime, the code will still fail (just without a compile-time warning), so make sure your `.env` is set up correctly.
 
-### 3. Seed Structure
+#### 3. Seed Structure
 
 ```ts
 async function main() {
@@ -554,10 +604,10 @@ main()
 ```
 
 - `main()` → contains all seed operations
-- `$disconnect()` → closes the database connection
-- `.catch()` → handles errors
+- `$disconnect()` → closes the database connection (important, otherwise the script can hang open)
+- `.catch()` → handles errors, logs them, and exits with a non-zero status code so tooling knows the seed failed
 
-### 4. Create Data
+#### 4. Create Data
 
 ```ts
 const grace = await prisma.user.create({
@@ -589,7 +639,7 @@ The operation creates a row in the `User` table and returns the created user, in
 import type { User } from "../generated/prisma/client";
 ```
 
-### 5. Run the Seed
+#### 5. Run the Seed
 
 ```bash
 npx prisma db seed
@@ -597,9 +647,9 @@ npx prisma db seed
 
 This executes `prisma/seed.ts` and inserts the sample data.
 
-### 6. Clear Data Before Re-seeding
+#### 6. Clear Data Before Re-seeding
 
-Running the seed multiple times can hit `@unique` constraint errors, so delete existing data first. **Delete dependent/child records first** because of foreign keys:
+Running the seed multiple times can hit `@unique` constraint errors (e.g. trying to insert the same email twice), so delete existing data first. **Delete dependent/child records first** because of foreign keys — PostgreSQL won't let you delete a `User` row while `TestResult` rows still reference it:
 
 ```ts
 await prisma.testResult.deleteMany({});
@@ -611,15 +661,15 @@ await prisma.course.deleteMany({});
 
 Deletion order: `TestResult` → `CourseEnrollment` → `Test` → `User` → `Course`.
 
-`deleteMany({})` deletes **all** rows from that table.
+`deleteMany({})` deletes **all** rows from that table (an empty `{}` filter means "match everything").
 
 ---
 
-## Nested Writes (`create` vs `connect`)
+### Nested Writes (`create` vs `connect`)
 
-A **nested write** lets Prisma create a record and its related records in a single operation.
+A **nested write** lets Prisma create a record and its related records in a single operation — instead of making several separate `create` calls yourself and manually wiring up the foreign keys.
 
-### Example: Create a Course with Tests and a Teacher Enrollment
+#### Example: Create a Course with Tests and a Teacher Enrollment
 
 ```ts
 // 1. Calculate future dates
@@ -678,7 +728,9 @@ Course
 - 3 rows → `Test`
 - 1 row → `CourseEnrollment`
 
-### `create` vs `connect`
+All of this happens inside a **single database transaction** — either everything succeeds together, or none of it is saved, so you never end up with a half-created course.
+
+#### `create` vs `connect`
 
 | Operation                         | Meaning                                                                 |
 | --------------------------------- | ----------------------------------------------------------------------- |
@@ -700,7 +752,7 @@ CourseEnrollment
 New Course
 ```
 
-### `include`
+#### `include`
 
 ```ts
 include: {
@@ -713,7 +765,9 @@ include: {
 - Without `include` → you mainly get the created `Course`.
 - With `include: { tests: true }` → you get the `Course` **plus** its `Test`s.
 
-### Creating a Second User and Enrolling Them
+This matters because, by default, Prisma does **not** automatically return related records on a write — you have to opt in with `include` (or `select`) if you need them in the response.
+
+#### Creating a Second User and Enrolling Them
 
 ```ts
 const shakuntala = await prisma.user.create({
@@ -741,7 +795,7 @@ In the `User` model, `courses` represents `CourseEnrollment[]`, not `Course[]`. 
 - `role: "STUDENT"` → sets the user's role for that course.
 - `course: { connect: { id: course.id } }` → connects the new `CourseEnrollment` row to an **existing** `Course`.
 
-### Adding Test Results
+#### Adding Test Results
 
 `TestResult` relates to **three** models:
 
@@ -776,7 +830,7 @@ TestResult
 
 The `connect` calls don't create new users/tests — they link the new `TestResult` row to rows that already exist.
 
-### Creating Results for Multiple Tests
+#### Creating Results for Multiple Tests
 
 Store results in an array, where each position corresponds to a test:
 
@@ -827,7 +881,7 @@ Test 3 → Shakuntala → 910
 
 ---
 
-## Prisma Studio
+### Prisma Studio
 
 After seeding, view your data visually with:
 
@@ -835,11 +889,13 @@ After seeding, view your data visually with:
 npx prisma studio
 ```
 
+This opens a local web UI (usually at `http://localhost:5555`) where you can browse tables, inspect rows, and manually edit data — useful for quickly verifying that your seed script or a write actually did what you expected, without writing a query for it.
+
 ---
 
-## Prisma Aggregation
+### Prisma Aggregation
 
-### 1. `aggregate()` — Get Statistics
+#### 1. `aggregate()` — Get Statistics
 
 `aggregate()` calculates summary values across multiple rows.
 
@@ -884,7 +940,7 @@ _count = 2
 
 `_count = 2` because two rows matched the query.
 
-### 2. Student-wise Aggregation
+#### 2. Student-wise Aggregation
 
 You can also compute statistics for a single student:
 
@@ -913,7 +969,7 @@ Count   = 3
 
 `aggregate()` is useful whenever you want statistics for one particular group/entity — e.g. average marks for one test, average performance for one student, or total students in one course.
 
-### 3. `groupBy()` — Aggregate Many Groups at Once
+#### 3. `groupBy()` — Aggregate Many Groups at Once
 
 Instead of calling `aggregate()` separately for every test in a loop:
 
@@ -983,3 +1039,45 @@ Results grouped by testId
 
 - `aggregate()` → statistics for one specific set of rows
 - `groupBy()` → splits rows into groups and calculates statistics for every group in a single query
+
+---
+
+### Quick Reference / Cheat Sheet
+
+**Setup commands**
+
+| Command                                | What it does                                                  |
+| -------------------------------------- | ------------------------------------------------------------- |
+| `npx create-db`                        | Creates a cloud PostgreSQL database, prints connection string |
+| `npx prisma init --output <path>`      | Initializes Prisma in the project                             |
+| `npx prisma migrate dev --name <name>` | Creates + runs a migration, updates the database              |
+| `npx prisma generate`                  | Regenerates the Prisma Client from `schema.prisma`            |
+| `npx prisma db seed`                   | Runs the seed script                                          |
+| `npx prisma studio`                    | Opens the visual database browser                             |
+
+**Schema syntax**
+
+| Syntax                                        | Meaning                                                 |
+| --------------------------------------------- | ------------------------------------------------------- |
+| `@id`                                         | Marks field as primary key                              |
+| `@default(autoincrement())`                   | Auto-incrementing integer                               |
+| `@unique`                                     | No duplicate values allowed                             |
+| `@default(now())`                             | Timestamp set on row creation                           |
+| `@updatedAt`                                  | Timestamp updated automatically on row update           |
+| `Field?`                                      | Optional field (nullable)                               |
+| `Model[]`                                     | "Many" side of a relation (virtual field, no DB column) |
+| `@relation(fields: [...], references: [...])` | Defines the FK side of a relation                       |
+| `@@id([...])`                                 | Composite primary key across multiple fields            |
+| `@@index([...])`                              | Database index for faster lookups                       |
+| `enum`                                        | Restricts a field to a fixed set of values              |
+
+**Prisma Client operations**
+
+| Method           | Purpose                                                              |
+| ---------------- | -------------------------------------------------------------------- |
+| `create()`       | Insert a new row                                                     |
+| `connect`        | Link to an existing row (used inside nested writes)                  |
+| `deleteMany({})` | Delete all matching rows                                             |
+| `include`        | Return related records alongside the main result                     |
+| `aggregate()`    | Compute stats (`_avg`, `_max`, `_min`, `_count`) for one set of rows |
+| `groupBy()`      | Compute stats for multiple groups in one query                       |
